@@ -2,5 +2,5 @@
 
 
 ``` sh
-zig build run // run the iso in qemu
+zig build run # run the iso in qemu
 ```
