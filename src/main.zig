@@ -43,7 +43,7 @@ const MultibootInfo = extern struct {
     config_table: u32,
 
     // Boot Loader Name
-    boot_loader_name: *const u8,
+    boot_loader_name: [*:0]const u8,
 
     // APM table
     apm_table: u32,
@@ -63,11 +63,12 @@ export fn _start() callconv(.C) void {
         \\cli
         \\hlt
     );
-    // @call(.auto, kernal_main, .{0x61});
+    // @call(.auto, kernel_main, .{});
     while (true) std.atomic.spinLoopHint();
 }
 
 export fn kernel_main(multiboot_magic: u32, info: *const MultibootInfo) void {
     console.initialize();
-    console.printf("magic ::: {x}\nflags ::: {x}", .{ multiboot_magic, info.flags });
+    console.printf("magic ::: {x}\nflags ::: {x}\n", .{ multiboot_magic, info.flags });
+    console.printf("bootloader name ::: {s}", .{info.boot_loader_name});
 }
