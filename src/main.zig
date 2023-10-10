@@ -54,17 +54,15 @@ export var _ align(4) linksection(".multiboot") = MultibootHeader{
     .checksum = -(MAGIC + FLAGS),
 };
 
-export fn _start() callconv(.C) void {
-    var multiboot_magic: u32 = undefined;
-    var info: *const MultibootInfo = undefined;
+export fn _start() align(4) linksection(".text") callconv(.C) noreturn {
     asm volatile ("mov $0x1000000, %esp");
-    asm volatile ("mov %eax, %[multiboot_magic]"
-        : [multiboot_magic] "={eax}" (multiboot_magic),
+    var multiboot_magic: u32 = asm volatile ("mov %eax, %[ret]"
+        : [ret] "={eax}" (-> u32),
         :
         : "eax"
     );
-    asm volatile ("mov %ebx, %[info]"
-        : [info] "={ebx}" (info),
+    var info: *const MultibootInfo = asm volatile ("mov %ebx, %[ret]"
+        : [ret] "={ebx}" (-> *const MultibootInfo),
         :
         : "ebx"
     );
