@@ -55,15 +55,20 @@ export var _ align(4) linksection(".multiboot") = MultibootHeader{
 };
 
 export fn _start() callconv(.C) void {
-    asm volatile (
-        \\mov $0x1000000, %esp
-        \\push %ebx
-        \\push %eax
-        \\call kernel_main
-        \\cli
-        \\hlt
+    var multiboot_magic: u32 = undefined;
+    var info: *const MultibootInfo = undefined;
+    asm volatile ("mov $0x1000000, %esp");
+    asm volatile ("mov %eax, %[multiboot_magic]"
+        : [multiboot_magic] "={eax}" (multiboot_magic),
+        :
+        : "eax"
     );
-    // @call(.auto, kernel_main, .{});
+    asm volatile ("mov %ebx, %[info]"
+        : [info] "={ebx}" (info),
+        :
+        : "ebx"
+    );
+    @call(.auto, kernel_main, .{ multiboot_magic, info });
     while (true) std.atomic.spinLoopHint();
 }
 
