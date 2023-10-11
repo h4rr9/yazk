@@ -47,6 +47,28 @@ const MultibootInfo = extern struct {
 
     // APM table
     apm_table: u32,
+
+    vbe_control_info: u32,
+    vbe_mode_info: u32,
+    vbe_mode: u16,
+    vbe_interface_seg: u16,
+    vbe_interface_off: u16,
+    vbe_interface_len: u16,
+
+    framebuffer_addr: u64,
+    framebuffer_pitch: u32,
+    framebuffer_width: u32,
+    framebuffer_height: u32,
+    framebuffer_bpp: u8,
+    framebuffer_type: u8,
+    color_info: [6]u8,
+};
+
+const MultibootMmapEntry = packed struct {
+    size: u32,
+    addr: u64,
+    len: u64,
+    type_: u32,
 };
 
 export var _ align(4) linksection(".multiboot") = MultibootHeader{
@@ -72,6 +94,15 @@ export fn _start() align(4) linksection(".text") callconv(.C) noreturn {
 
 export fn kernel_main(multiboot_magic: u32, info: *const MultibootInfo) void {
     console.initialize();
-    console.printf("magic ::: {x}\nflags ::: {x}\n", .{ multiboot_magic, info.flags });
-    console.printf("bootloader name ::: {s}", .{info.boot_loader_name});
+
+    console.printf("valid mmap ::: {d}\n", .{info.flags >> 6 & 0x1});
+    console.printf("magic ::: {x}\n", .{multiboot_magic});
+    console.printf("flags ::: {x}\n", .{info.flags});
+    console.printf("bootloader name ::: {s}\n", .{info.boot_loader_name});
+    console.printf("mmap length ::: {d}\n", .{info.mmap_length});
+
+    const mmap = @as([*]MultibootMmapEntry, @ptrFromInt(info.mmap_addr));
+    const len = info.mmap_length / @sizeOf(MultibootMmapEntry);
+
+    for (0..len) |i| console.printf("Start addr: {x}, len: {d}, size: {d}, type ::: {d}\n", .{ mmap[i].addr, mmap[i].len, mmap[i].size, mmap[i].type_ });
 }

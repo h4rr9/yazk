@@ -92,6 +92,6 @@ pub fn build(b: *std.Build) void {
     const run_kernel_cmd = b.addSystemCommand(run_kernel_cmd_str);
     run_kernel_cmd.step.dependOn(b.getInstallStep());
 
-    const run_kernel_step = b.step("run-kernal", "Run the kernel");
+    const run_kernel_step = b.step("run-kernel", "Run the kernel");
     run_kernel_step.dependOn(&run_kernel_cmd.step);
 }
