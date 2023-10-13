@@ -36,6 +36,7 @@ pub fn build(b: *std.Build) void {
     });
     kernel.setLinkerScript(.{ .path = "src/linker.ld" });
     kernel.code_model = .kernel;
+    kernel.pie = true;
     var kernel_install = b.addInstallArtifact(kernel, .{});
 
     const kernel_step = b.step("kernel", "Build the kernel");

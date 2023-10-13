@@ -66,9 +66,11 @@ const MultibootInfo = extern struct {
 
 const MultibootMmapEntry = packed struct {
     size: u32,
-    addr: u64,
-    len: u64,
-    type_: u32,
+    addr_low: u32,
+    addr_high: u32,
+    len_low: u32,
+    len_high: u32,
+    type: u32,
 };
 
 export var _ align(4) linksection(".multiboot") = MultibootHeader{
@@ -88,11 +90,13 @@ export fn _start() align(4) linksection(".text") callconv(.C) noreturn {
         :
         : "ebx"
     );
-    @call(.auto, kernel_main, .{ multiboot_magic, info });
+    @call(.auto, kernelMain, .{ multiboot_magic, info });
     while (true) std.atomic.spinLoopHint();
 }
 
-export fn kernel_main(multiboot_magic: u32, info: *const MultibootInfo) void {
+export fn panic() void {}
+
+fn kernelMain(multiboot_magic: u32, info: *const MultibootInfo) void {
     console.initialize();
 
     console.printf("valid mmap ::: {d}\n", .{info.flags >> 6 & 0x1});
@@ -103,6 +107,13 @@ export fn kernel_main(multiboot_magic: u32, info: *const MultibootInfo) void {
 
     const mmap = @as([*]MultibootMmapEntry, @ptrFromInt(info.mmap_addr));
     const len = info.mmap_length / @sizeOf(MultibootMmapEntry);
+    console.printf("num mmap = {d}\n", .{len});
 
-    for (0..len) |i| console.printf("Start addr: {x}, len: {d}, size: {d}, type ::: {d}\n", .{ mmap[i].addr, mmap[i].len, mmap[i].size, mmap[i].type_ });
+    var total_len: u32 = 0;
+    for (0..len) |i| {
+        const size_kb: f32 = @as(f32, @floatFromInt(mmap[i].len_low)) / 1024.0;
+        total_len += mmap[i].len_low;
+        console.printf("size: {d}, len: {d}K, start addr: {x}, type ::: {d}\n", .{ mmap[i].size, size_kb, mmap[i].addr_low, mmap[i].type });
+    }
+    console.printf("total mmap len ::: {d:.2}M", .{@as(f32, @floatFromInt(total_len)) / 1024.0 / 1024.0});
 }
