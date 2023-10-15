@@ -89,6 +89,10 @@ fn callback(_: void, string: []const u8) error{}!usize {
     return string.len;
 }
 
+pub fn write(comptime format: []const u8, args: anytype) void {
+    fmt.format(writer, format ++ "\n", args) catch unreachable;
+}
+
 pub fn printf(comptime format: []const u8, args: anytype) void {
     fmt.format(writer, format, args) catch unreachable;
 }

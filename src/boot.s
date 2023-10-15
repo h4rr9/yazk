@@ -101,6 +101,13 @@ _start:
 1:	hlt
 	jmp 1b
 
+
+.global getESP
+.type getESP, @function
+getESP:
+    mov %esp, %eax
+    ret
+
 /*
 Set the size of the _start symbol to the current location '.' minus its start.
 This is useful when debugging or when you implement call tracing.

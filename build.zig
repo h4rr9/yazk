@@ -35,36 +35,64 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     kernel.setLinkerScript(.{ .path = "src/linker.ld" });
+    kernel.addAssemblyFile(.{ .path = "src/boot.s" });
     kernel.code_model = .kernel;
-    kernel.pie = true;
     var kernel_install = b.addInstallArtifact(kernel, .{});
-
-    const kernel_step = b.step("kernel", "Build the kernel");
-    kernel_step.dependOn(&kernel_install.step);
 
     const iso_dir = b.fmt("{s}/iso_root", .{b.cache_root.path.?});
     const iso_dir_boot = b.fmt("{s}/iso_root/boot", .{b.cache_root.path.?});
+    const iso_dir_modules = b.fmt("{s}/iso_root/modules", .{b.cache_root.path.?});
     const iso_dir_boot_grub = b.fmt("{s}/iso_root/boot/grub", .{b.cache_root.path.?});
     const kernel_path = b.getInstallPath(kernel_install.dest_dir.?, kernel.out_filename);
     const iso_path = b.fmt("{s}/disk.iso", .{b.exe_dir});
+    const symbol_file_path = b.fmt("{s}/kernel.map", .{b.exe_dir});
+
+    const symbol_info_cmd_str = &[_][]const u8{
+        "/bin/sh", "-c", std.mem.concat(b.allocator, u8, &[_][]const u8{
+            "mkdir -p ",
+            iso_dir_modules,
+            "&&",
+            "readelf -s --wide ",
+            kernel_path,
+            "| grep -F \"FUNC\" | awk '{$1=$3=$4=$5=$6=$7=\"\"; print $0}' | sort -k 1 > ",
+            symbol_file_path,
+            " && ",
+            "echo \"\" >> ",
+            symbol_file_path,
+        }) catch unreachable,
+    };
+    const symbol_cmd = b.addSystemCommand(symbol_info_cmd_str);
+    symbol_cmd.step.dependOn(&kernel_install.step);
 
     const iso_cmd_str = &[_][]const u8{
         "/bin/sh", "-c", std.mem.concat(b.allocator, u8, &[_][]const u8{
-            "mkdir -p ",       iso_dir_boot_grub, " && ",
-            "cp ",             kernel_path,       " ",
-            iso_dir_boot,      " && ",            "cp src/grub.cfg ",
-            iso_dir_boot_grub, " && ",            "grub-mkrescue -o ",
-            iso_path,          " ",               iso_dir,
+            "mkdir -p ",
+            iso_dir_boot_grub,
+            " && ",
+            "cp ",
+            kernel_path,
+            " ",
+            iso_dir_boot,
+            " && ",
+            "cp src/grub.cfg ",
+            iso_dir_boot_grub,
+            " && ",
+            "cp ",
+            symbol_file_path,
+            " ",
+            iso_dir_modules,
+            " && ",
+            "grub-mkrescue -o ",
+            iso_path,
+            " ",
+            iso_dir,
+            " 2> ",
+            "/dev/null",
         }) catch unreachable,
     };
 
     const iso_cmd = b.addSystemCommand(iso_cmd_str);
-    iso_cmd.step.dependOn(kernel_step);
-
-    const iso_step = b.step("iso", "Build an ISO image");
-    iso_step.dependOn(&iso_cmd.step);
-
-    b.default_step.dependOn(iso_step);
+    iso_cmd.step.dependOn(&symbol_cmd.step);
 
     const run_iso_cmd_str = &[_][]const u8{
         "qemu-system-x86_64",
@@ -82,17 +110,29 @@ pub fn build(b: *std.Build) void {
     const run_iso_cmd = b.addSystemCommand(run_iso_cmd_str);
     run_iso_cmd.step.dependOn(b.getInstallStep());
 
-    const run_iso_step = b.step("run", "Run the iso");
-    run_iso_step.dependOn(&run_iso_cmd.step);
-
     const run_kernel_cmd_str = &[_][]const u8{
         "qemu-system-x86_64",
         "-kernel",
         kernel_path,
     };
+
+    const run_iso_step = b.step("run", "Run the iso");
+    run_iso_step.dependOn(&run_iso_cmd.step);
+
     const run_kernel_cmd = b.addSystemCommand(run_kernel_cmd_str);
-    run_kernel_cmd.step.dependOn(b.getInstallStep());
+    run_kernel_cmd.step.dependOn(&kernel_install.step);
 
     const run_kernel_step = b.step("run-kernel", "Run the kernel");
     run_kernel_step.dependOn(&run_kernel_cmd.step);
+
+    const kernel_step = b.step("kernel", "Build the kernel");
+    kernel_step.dependOn(&kernel_install.step);
+
+    const symbol_run_step = b.step("symbol", "Build kernel.map from kernel.elf");
+    symbol_run_step.dependOn(&symbol_cmd.step);
+
+    const iso_step = b.step("iso", "Build an ISO image");
+    iso_step.dependOn(&iso_cmd.step);
+
+    b.default_step.dependOn(iso_step);
 }

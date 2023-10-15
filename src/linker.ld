@@ -21,11 +21,10 @@ SECTIONS
 	}
 
 	/* Read-only data. */
-	.rodata  : ALIGN(4K)
-	{
-		*(.rodata)
+  	.rodata : ALIGN(4K)
+  	{
+  		*(.rodata)
 	}
-
 	/* Read-write data (initialized) */
 	.data  : ALIGN(4K)
 	{

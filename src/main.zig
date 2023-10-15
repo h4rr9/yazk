@@ -1,119 +1,54 @@
 const std = @import("std");
+const builtin = std.builtin;
 
 const console = @import("console.zig");
+const multiboot = @import("multiboot.zig");
+const ally = @import("ally.zig");
+const layout = @import("layout.zig");
+const debug = @import("debug.zig");
 
-const ALIGN = 1 << 0; // 0000 0001 - one left shift zero
-const MEMINFO = 1 << 1; // 0000 0010 - one left shift 1
-const MAGIC = 0x1BADB002; // GRUB magic
-const FLAGS = ALIGN | MEMINFO;
-const MultibootHeader = extern struct {
-    magic: i32 = MAGIC,
-    flags: i32,
-    checksum: i32,
-};
-const MultibootInfo = extern struct {
-    // Multiboot info version number
-    flags: u32,
+const MultibootMmapEntry = multiboot.MultibootMmapEntry;
 
-    // Available memory from BIOS
-    mem_lower: u32,
-    mem_upper: u32,
+extern fn getESP() u32;
 
-    // "root" partition
-    boot_device: u32,
+/// The size of the fixed allocator used before the heap is set up. Set to 1MiB.
+pub var fixed_buffer: [1024 * 1024]u8 = undefined;
 
-    // Kernel command line
-    cmdline: u32,
+/// The fixed allocator used before the heap is set up.
+pub var fixed_buffer_allocator: std.heap.FixedBufferAllocator = std.heap.FixedBufferAllocator.init(fixed_buffer[0..]);
 
-    // Boot-Module list
-    mods_count: u32,
-    mods_addr: u32,
-
-    dummy: [16]u8,
-
-    // Memory Mapping buffer
-    mmap_length: u32,
-    mmap_addr: u32,
-
-    // Drive Info buffer
-    drives_length: u32,
-    drives_addr: u32,
-
-    // ROM configuration table
-    config_table: u32,
-
-    // Boot Loader Name
-    boot_loader_name: [*:0]const u8,
-
-    // APM table
-    apm_table: u32,
-
-    vbe_control_info: u32,
-    vbe_mode_info: u32,
-    vbe_mode: u16,
-    vbe_interface_seg: u16,
-    vbe_interface_off: u16,
-    vbe_interface_len: u16,
-
-    framebuffer_addr: u64,
-    framebuffer_pitch: u32,
-    framebuffer_width: u32,
-    framebuffer_height: u32,
-    framebuffer_bpp: u8,
-    framebuffer_type: u8,
-    color_info: [6]u8,
-};
-
-const MultibootMmapEntry = packed struct {
-    size: u32,
-    addr_low: u32,
-    addr_high: u32,
-    len_low: u32,
-    len_high: u32,
-    type: u32,
-};
-
-export var _ align(4) linksection(".multiboot") = MultibootHeader{
-    .flags = FLAGS,
-    .checksum = -(MAGIC + FLAGS),
-};
-
-export fn _start() align(4) linksection(".text") callconv(.C) noreturn {
-    asm volatile ("mov $0x1000000, %esp");
-    var multiboot_magic: u32 = asm volatile ("mov %eax, %[ret]"
-        : [ret] "={eax}" (-> u32),
-        :
-        : "eax"
-    );
-    var info: *const MultibootInfo = asm volatile ("mov %ebx, %[ret]"
-        : [ret] "={ebx}" (-> *const MultibootInfo),
-        :
-        : "ebx"
-    );
-    @call(.auto, kernelMain, .{ multiboot_magic, info });
-    while (true) std.atomic.spinLoopHint();
-}
-
-export fn panic() void {}
-
-fn kernelMain(multiboot_magic: u32, info: *const MultibootInfo) void {
+export fn kmain(multiboot_magic: u32, info: *const multiboot.MultibootInfo) void {
     console.initialize();
 
-    console.printf("valid mmap ::: {d}\n", .{info.flags >> 6 & 0x1});
-    console.printf("magic ::: {x}\n", .{multiboot_magic});
-    console.printf("flags ::: {x}\n", .{info.flags});
-    console.printf("bootloader name ::: {s}\n", .{info.boot_loader_name});
-    console.printf("mmap length ::: {d}\n", .{info.mmap_length});
+    console.write("magic ::: {x}", .{multiboot_magic});
+    console.write("valid mmap ::: {d}", .{info.flags >> 6 & 0x1});
+    console.write("flags ::: {x}", .{info.flags});
+    console.write("bootloader name ::: {s}", .{info.boot_loader_name});
+    console.write("mmap length ::: {d}", .{info.mmap_length});
 
-    const mmap = @as([*]MultibootMmapEntry, @ptrFromInt(info.mmap_addr));
-    const len = info.mmap_length / @sizeOf(MultibootMmapEntry);
-    console.printf("num mmap = {d}\n", .{len});
+    console.write("num mmap = {d}", .{info.getNumMmap()});
 
     var total_len: u32 = 0;
-    for (0..len) |i| {
-        const size_kb: f32 = @as(f32, @floatFromInt(mmap[i].len_low)) / 1024.0;
-        total_len += mmap[i].len_low;
-        console.printf("size: {d}, len: {d}K, start addr: {x}, type ::: {d}\n", .{ mmap[i].size, size_kb, mmap[i].addr_low, mmap[i].type });
-    }
-    console.printf("total mmap len ::: {d:.2}M", .{@as(f32, @floatFromInt(total_len)) / 1024.0 / 1024.0});
+    for (info.getMmapAddrs()) |mmap| if (mmap.type == multiboot.MULTIBOOT_MEMORY_AVAILABLE) {
+        const size_kb: f32 = @as(f32, @floatFromInt(mmap.len)) / 1024.0;
+        total_len += mmap.len;
+        console.write("size: {d}, len: {d}K, start addr: {x}", .{ mmap.size, size_kb, mmap.addr });
+    };
+    console.write("total mmap len ::: {d:.2}M", .{@as(f32, @floatFromInt(total_len)) / 1024.0 / 1024.0});
+    const kernel_start: usize = @intFromPtr(&layout.KERNEL_START);
+    const kernel_end: usize = @intFromPtr(&layout.KERNEL_END);
+    console.write("KERNEL_START = {x}, KERNEL_END = {x}", .{ kernel_start, kernel_end });
+    console.write("STACK POINTER = {x}", .{getESP()});
+
+    console.write("Module len: {d}", .{info.mods_count});
+
+    debug.initSymbols(info.getModules(), fixed_buffer_allocator.allocator()) catch @panic("Failed to initialize debug symbols.");
+
+    var alloc = ally.Allocator.init(info);
+    _ = std.ArrayList(u8).initCapacity(alloc.allocator(), 10) catch {};
+}
+
+pub fn panic(msg: []const u8, error_return_trace: ?*std.builtin.StackTrace, return_addr: ?usize) noreturn {
+    @setCold(true);
+    debug.panic(error_return_trace, return_addr, "{s}", .{msg});
 }
