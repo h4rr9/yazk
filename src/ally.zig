@@ -37,7 +37,7 @@ pub const Allocator = struct {
         return .{ .first_free = null };
     }
     fn alloc(
-        _: *anyopaque,
+        ctx: *anyopaque,
         len: usize,
         log2_align: u8,
         return_address: usize,
@@ -45,11 +45,13 @@ pub const Allocator = struct {
         _ = return_address;
         _ = log2_align;
         _ = len;
+        const self: *Self = @ptrCast(@alignCast(ctx));
+        _ = self;
         console.puts("FOUND ALLOC\n");
         unreachable;
     }
     fn resize(
-        _: *anyopaque,
+        ctx: *anyopaque,
         buf: []u8,
         log2_buf_align: u8,
         new_len: usize,
@@ -60,11 +62,13 @@ pub const Allocator = struct {
         _ = log2_buf_align;
         _ = buf;
 
+        const self: *Self = @ptrCast(@alignCast(ctx));
+        _ = self;
         console.puts("FOUND RESIZE\n");
         unreachable;
     }
     fn free(
-        _: *anyopaque,
+        ctx: *anyopaque,
         buf: []u8,
         log2_buf_align: u8,
         return_address: usize,
@@ -72,6 +76,9 @@ pub const Allocator = struct {
         _ = return_address;
         _ = log2_buf_align;
         _ = buf;
+
+        const self: *Self = @ptrCast(@alignCast(ctx));
+        _ = self;
         console.puts("FOUND FREE\n");
         unreachable;
     }
