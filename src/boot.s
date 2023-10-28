@@ -98,15 +98,10 @@ _start:
 	   non-maskable interrupt occurring or due to system management mode.
 	*/
 	cli
-1:	hlt
-	jmp 1b
 
+spinlock:	pause
+			jmp spinlock
 
-.global getESP
-.type getESP, @function
-getESP:
-    mov %esp, %eax
-    ret
 
 /*
 Set the size of the _start symbol to the current location '.' minus its start.
