@@ -7,7 +7,10 @@ const ally = @import("ally.zig");
 const layout = @import("layout.zig");
 const debug = @import("debug.zig");
 
-const MultibootMmapEntry = multiboot.MultibootMmapEntry;
+// embedding in file works for non-Debug builds.
+comptime {
+    asm (@embedFile("boot.s"));
+}
 
 extern fn getESP() u32;
 

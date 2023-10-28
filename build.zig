@@ -35,7 +35,6 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     kernel.setLinkerScript(.{ .path = "src/linker.ld" });
-    kernel.addAssemblyFile(.{ .path = "src/boot.s" });
     kernel.code_model = .kernel;
     var kernel_install = b.addInstallArtifact(kernel, .{});
 
