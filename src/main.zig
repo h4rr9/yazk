@@ -61,8 +61,6 @@ export fn kmain(multiboot_magic: u32, info: *const multiboot.MultibootInfo) void
     defer allocator.destroy(ts);
 
     ts.* = .{ 2, 2, 2, 2 };
-
-    // console.write("sum = {d}", .{ts.@"0" + ts.@"1" + ts.@"2" + ts.@"3"});
 }
 
 const testStruct = struct { u32, u32, u32, u128 };
