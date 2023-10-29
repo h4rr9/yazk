@@ -27,8 +27,8 @@ pub const ConsoleColors = enum(u8) {
     White = 15,
 };
 
-var row: usize = 0;
-var column: usize = 0;
+var row: u32 = 0;
+var column: u32 = 0;
 var color = vgaEntryColor(.White, .Black);
 var buffer = @as([*]volatile u16, @ptrFromInt(0xB8000));
 
@@ -53,7 +53,7 @@ pub fn clear() void {
     @memset(buffer[0..VGA_SIZE], vgaEntry(' ', color));
 }
 
-pub fn putCharAt(c: u8, new_color: u8, x: usize, y: usize) void {
+pub fn putCharAt(c: u8, new_color: u8, x: u32, y: u32) void {
     const index = y * VGA_WIDTH + x;
     buffer[index] = vgaEntry(c, new_color);
 }
@@ -84,7 +84,7 @@ pub fn puts(data: []const u8) void {
 
 pub const writer = Writer(void, error{}, callback){ .context = {} };
 
-fn callback(_: void, string: []const u8) error{}!usize {
+fn callback(_: void, string: []const u8) error{}!u32 {
     puts(string);
     return string.len;
 }

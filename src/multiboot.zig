@@ -61,7 +61,7 @@ pub const MultibootInfo = extern struct {
         return mmaps[0..self.getNumMmap()];
     }
 
-    pub inline fn getNumMmap(self: *const Self) usize {
+    pub inline fn getNumMmap(self: *const Self) u32 {
         return self.mmap_length / @sizeOf(MultibootMmapEntry);
     }
 

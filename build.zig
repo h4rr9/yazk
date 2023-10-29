@@ -34,6 +34,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+
     kernel.setLinkerScript(.{ .path = "src/linker.ld" });
     kernel.code_model = .kernel;
     var kernel_install = b.addInstallArtifact(kernel, .{});
@@ -93,7 +94,7 @@ pub fn build(b: *std.Build) void {
     const iso_cmd = b.addSystemCommand(iso_cmd_str);
     iso_cmd.step.dependOn(&symbol_cmd.step);
 
-    const run_iso_cmd_str = &[_][]const u8{
+    const qemu_iso_cmd_str = &[_][]const u8{
         "qemu-system-x86_64",
         "-cdrom",
         iso_path,
@@ -106,40 +107,46 @@ pub fn build(b: *std.Build) void {
         "-no-reboot",
         "-no-shutdown",
     };
-    const run_iso_cmd = b.addSystemCommand(run_iso_cmd_str);
-    run_iso_cmd.step.dependOn(b.getInstallStep());
+    const qemu_iso_cmd = b.addSystemCommand(qemu_iso_cmd_str);
+    qemu_iso_cmd.step.dependOn(b.getInstallStep());
 
-    const run_kernel_cmd_str = &[_][]const u8{
+    const qemu_kernel_cmd_str = &[_][]const u8{
         "qemu-system-x86_64",
         "-kernel",
         kernel_path,
     };
 
     const run_iso_step = b.step("run", "Run the iso");
-    run_iso_step.dependOn(&run_iso_cmd.step);
+    run_iso_step.dependOn(&qemu_iso_cmd.step);
 
-    const run_kernel_cmd = b.addSystemCommand(run_kernel_cmd_str);
-    run_kernel_cmd.step.dependOn(&kernel_install.step);
+    const qemu_kernel_cmd = b.addSystemCommand(qemu_kernel_cmd_str);
+    qemu_kernel_cmd.step.dependOn(&kernel_install.step);
 
     const run_kernel_step = b.step("run-kernel", "Run the kernel");
-    run_kernel_step.dependOn(&run_kernel_cmd.step);
+    run_kernel_step.dependOn(&qemu_kernel_cmd.step);
 
     const kernel_step = b.step("kernel", "Build the kernel");
     kernel_step.dependOn(&kernel_install.step);
 
-    const symbol_run_step = b.step("symbol", "Build kernel.map from kernel.elf");
+    const symbol_run_step = b.step("symbol", "Build kernel.map");
     symbol_run_step.dependOn(&symbol_cmd.step);
 
     const iso_step = b.step("iso", "Build an ISO image");
     iso_step.dependOn(&iso_cmd.step);
 
     // Creates a step for unit testing. This only builds the test executable but does not run it.
+    const test_target = CrossTarget{
+        .cpu_arch = .x86,
+        .os_tag = .linux,
+        .abi = .none,
+        .cpu_features_sub = disabled_features,
+        .cpu_features_add = enabled_features,
+    };
     const unit_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/main.zig" },
-        .target = target,
+        .root_source_file = .{ .path = "src/test.zig" },
+        .target = test_target,
         .optimize = optimize,
     });
-    unit_tests.setLinkerScript(.{ .path = "src/linker.ld" });
     const run_unit_tests = b.addRunArtifact(unit_tests);
 
     const test_step = b.step("test", "Run unit tests");

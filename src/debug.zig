@@ -16,7 +16,7 @@ const PanicError = error{
 /// An entry within a symbol map. Corresponds to one entry in a symbol file
 const MapEntry = struct {
     /// The address that the entry corresponds to
-    addr: usize,
+    addr: u32,
 
     /// The name of the function that starts at the address
     func_name: []const u8,
@@ -64,12 +64,12 @@ const SymbolMap = struct {
     /// Search for the function name associated with the address.
     ///
     /// Arguments:
-    ///     IN addr: usize - The address to search for.
+    ///     IN addr: u32 - The address to search for.
     ///
     /// Return: ?[]const u8
     ///     The function name associated with that program address, or null if one wasn't found.
     ///
-    pub fn search(self: *const SymbolMap, addr: usize) ?[]const u8 {
+    pub fn search(self: *const SymbolMap, addr: u32) ?[]const u8 {
         if (self.symbols.items.len == 0)
             return null;
         // Find the first element whose address is greater than addr
@@ -90,9 +90,9 @@ var symbol_map: ?SymbolMap = null;
 /// "?????" if the address wasn't found in the symbol map, else logs the function name.
 ///
 /// Arguments:
-///     IN addr: usize - The address to log.
+///     IN addr: u32 - The address to log.
 ///
-fn logTraceAddress(addr: usize) void {
+fn logTraceAddress(addr: u32) void {
     const str = if (symbol_map) |syms| syms.search(addr) orelse "?????" else "(no symbols available)";
     console.write("{x}: {s}", .{ addr, str });
 }
@@ -107,19 +107,19 @@ fn logTraceAddress(addr: usize) void {
 ///     IN end: *const u8 - The end address at which to start looking. A whitespace character must
 ///         be found before this.
 ///
-/// Return: usize
+/// Return: u32
 ///     The address parsed.
 ///
 /// Error: PanicError || std.fmt.ParseIntError
 ///     PanicError.InvalidSymbolFile - A terminating whitespace wasn't found before the end address.
 ///     std.fmt.ParseIntError - See std.fmt.parseInt
 ///
-fn parseAddr(ptr: *[*]const u8, end: *const u8) (PanicError || std.fmt.ParseIntError)!usize {
+fn parseAddr(ptr: *[*]const u8, end: *const u8) (PanicError || std.fmt.ParseIntError)!u32 {
     const addr_start = ptr.*;
     ptr.* = try parseNonWhitespace(ptr.*, end);
     const len = @intFromPtr(ptr.*) - @intFromPtr(addr_start);
     const addr_str = addr_start[0..len];
-    return std.fmt.parseInt(usize, addr_str, 16);
+    return std.fmt.parseInt(u32, addr_str, 16);
 }
 
 ///
@@ -261,7 +261,7 @@ fn parseMapEntry(start: *[*]const u8, end: *const u8) (PanicError || std.fmt.Par
 
 var already_panicking: bool = false;
 
-pub fn panic(trace: ?*builtin.StackTrace, return_addr: ?usize, comptime format: []const u8, args: anytype) noreturn {
+pub fn panic(trace: ?*builtin.StackTrace, return_addr: ?u32, comptime format: []const u8, args: anytype) noreturn {
     @setCold(true);
     if (already_panicking) {
         console.write("\npanicked during kernel panic", .{});
@@ -309,8 +309,8 @@ pub fn initSymbols(modules: []multiboot.Module, allocator: Allocator) !void {
         return;
     }
 
-    var kmap_start: usize = 0;
-    var kmap_end: usize = 0;
+    var kmap_start: u32 = 0;
+    var kmap_end: u32 = 0;
     for (modules) |module| {
         const mod_start = module.mod_start;
         const mod_end = module.mod_end - 1;

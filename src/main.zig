@@ -38,8 +38,8 @@ export fn kmain(multiboot_magic: u32, info: *const multiboot.MultibootInfo) void
         console.write("size: {d}, len: {d:.2}K, start addr: {x}", .{ mmap.size, size_kb, mmap.addr });
     };
     console.write("total mmap len ::: {d:.2}M", .{@as(f32, @floatFromInt(total_len)) / 1024.0 / 1024.0});
-    const kernel_start: usize = @intFromPtr(&layout.KERNEL_START);
-    const kernel_end: usize = @intFromPtr(&layout.KERNEL_END);
+    const kernel_start: u32 = @intFromPtr(&layout.KERNEL_START);
+    const kernel_end: u32 = @intFromPtr(&layout.KERNEL_END);
     console.write("KERNEL_START = {x}, KERNEL_END = {x}", .{ kernel_start, kernel_end });
 
     console.write("Module len: {d}", .{info.mods_count});
@@ -56,6 +56,9 @@ export fn kmain(multiboot_magic: u32, info: *const multiboot.MultibootInfo) void
     arr_a.append(3) catch @panic("appending 3");
     arr_a.append(4) catch @panic("appending 4");
     arr_a.append(5) catch @panic("appending 5");
+    arr_a.append(6) catch @panic("appending 6");
+
+    // arr_a.shrinkAndFree(6);
 
     var ts = allocator.create(testStruct) catch @panic("out of memory");
     defer allocator.destroy(ts);
@@ -65,7 +68,7 @@ export fn kmain(multiboot_magic: u32, info: *const multiboot.MultibootInfo) void
 
 const testStruct = struct { u32, u32, u32, u128 };
 
-pub fn panic(msg: []const u8, error_return_trace: ?*std.builtin.StackTrace, return_addr: ?usize) noreturn {
+pub fn panic(msg: []const u8, error_return_trace: ?*std.builtin.StackTrace, return_addr: ?u32) noreturn {
     @setCold(true);
     debug.panic(error_return_trace, return_addr, "{s}", .{msg});
 }
