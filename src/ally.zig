@@ -199,6 +199,152 @@ pub fn allocator(self: *Ally) std.mem.Allocator {
     };
 }
 
+// ######## ALLOC TESTS ########
+
+fn allocState(ally: *Ally) [100]FreeSegment {
+    var segments: [100]FreeSegment = [_]FreeSegment{.{ .size = 0, .next_segment = null }} ** 100;
+    var it: u32 = 0;
+    var free_block = ally.first_free;
+    while (free_block) |free_blk| : (free_block = free_blk.next_segment) {
+        segments[it] = free_blk.*;
+        it += 1;
+    }
+    return segments;
+}
+
+fn setupAlloc(chunk: [*]u8, len: u32) Ally {
+    @setRuntimeSafety(false);
+    const segment: *FreeSegment = @ptrCast(@alignCast(chunk));
+    segment.* = .{ .size = len - @sizeOf(FreeSegment), .next_segment = null };
+    return .{ .first_free = segment };
+}
+
+fn expectNotEqual(comptime T: type, a: T, b: T) !void {
+    if (isEqual(T, a, b)) {
+        try std.testing.expect(false);
+    }
+}
+
+fn isEqual(comptime T: type, a: T, b: T) bool {
+    for (a, b) |it_a, it_b| {
+        if (it_a.next_segment != it_b.next_segment or it_a.size != it_b.size) return false;
+    }
+    return true;
+}
+
 test "Segment Sizes" {
     try std.testing.expectEqual(@sizeOf(FreeSegment), @sizeOf(UsedSegment));
+}
+
+test "Simple Alloc" {
+    var talloc = std.testing.allocator;
+
+    var chunk = try talloc.alloc(u8, 2 * 1024 * 1024);
+    defer talloc.free(chunk);
+
+    var kally = setupAlloc(@ptrCast(&chunk[0]), chunk.len);
+    var kalloc = kally.allocator();
+
+    const initial_state = allocState(&kally);
+    try std.testing.expectEqual(initial_state.len, 100);
+
+    const p = try kalloc.create(u32);
+    p.* = 4;
+
+    const next_state = allocState(&kally);
+
+    try expectNotEqual([100]FreeSegment, initial_state, next_state);
+
+    var n_diff: u32 = 0;
+
+    for (initial_state, next_state) |state_a, state_b| {
+        if (state_a.size != state_b.size or state_a.next_segment != state_b.next_segment) {
+            n_diff += 1;
+        }
+    }
+    try std.testing.expectEqual(n_diff, 1);
+
+    const diff_seg_a, const diff_seg_b = for (initial_state, next_state) |state_a, state_b| {
+        if (state_a.size != state_b.size or state_a.next_segment != state_b.next_segment) {
+            break .{ &state_a, &state_b };
+        }
+    } else @panic("could not find diff items!");
+
+    try std.testing.expect(diff_seg_a.size >= diff_seg_b.size + @sizeOf(@TypeOf(p)) + @sizeOf(UsedSegment));
+
+    kalloc.destroy(p);
+    const final_state = allocState(&kally);
+    try std.testing.expectEqualSlices(FreeSegment, &initial_state, &final_state);
+}
+
+test "Nested Vectors" {
+    var talloc = std.testing.allocator;
+
+    var chunk = try talloc.alloc(u8, 2 * 1024 * 1024);
+    defer talloc.free(chunk);
+
+    var kally = setupAlloc(@ptrCast(&chunk[0]), chunk.len);
+    var kalloc = kally.allocator();
+
+    const initial_state = allocState(&kally);
+    {
+        var v = std.ArrayList(std.ArrayList(u32)).init(kalloc);
+        defer {
+            for (v.items) |itm| itm.deinit();
+            v.deinit();
+        }
+        const num_allocations: u32 = 10;
+
+        for (1..num_allocations) |i| {
+            var v2 = std.ArrayList(u32).init(kalloc);
+            for (0..i) |j| {
+                try v2.append(j);
+            }
+            try v.append(v2);
+        }
+
+        // remove all even elements and deinit them.
+        var idx: u32 = num_allocations;
+        while (idx > 0) {
+            idx -= 1;
+            if (idx % 2 == 0) {
+                const len = v.items.len - 1;
+
+                // swap values
+                const tmp = v.items[len];
+                v.items[len] = v.items[idx];
+                v.items[idx] = tmp;
+
+                // pop
+                var arr = v.pop();
+                arr.deinit();
+            }
+        }
+
+        {
+            var v3 = std.ArrayList(std.ArrayList(u32)).init(kalloc);
+            defer {
+                for (v3.items) |itm| itm.deinit();
+                v3.deinit();
+            }
+
+            for (1..num_allocations) |i| {
+                var v2 = std.ArrayList(u32).init(kalloc);
+                for (0..i) |j| {
+                    try v2.append(j);
+                }
+                try v3.append(v2);
+            }
+        }
+
+        // memory corruption
+
+        for (v.items) |elem|
+            for (elem.items, 0..) |item, i| {
+                try std.testing.expectEqual(i, item);
+            };
+    }
+
+    const final_state = allocState(&kally);
+    try std.testing.expectEqualSlices(FreeSegment, &initial_state, &final_state);
 }
