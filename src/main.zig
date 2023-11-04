@@ -7,6 +7,7 @@ const ally = @import("ally.zig");
 const layout = @import("layout.zig");
 const debug = @import("debug.zig");
 const log = @import("log.zig");
+const serial = @import("serial.zig");
 
 const boot_logger = std.log.scoped(.boot);
 
@@ -31,6 +32,7 @@ export fn kmain(multiboot_magic: u32, info: *const multiboot.MultibootInfo) void
     _ = multiboot_magic;
 
     console.initialize();
+    _ = serial.initialize();
     boot_logger.info("console initialized", .{});
 
     console.write("bootloader name ::: {s}", .{info.boot_loader_name});
@@ -57,6 +59,10 @@ export fn kmain(multiboot_magic: u32, info: *const multiboot.MultibootInfo) void
     defer allocator.destroy(ts);
 
     ts.* = .{ 2, 2, 2, 2 };
+
+    while (true) {
+        console.write("input from serial ::: {c}", .{serial.readSerial()});
+    }
 }
 
 pub fn panic(msg: []const u8, error_return_trace: ?*std.builtin.StackTrace, return_addr: ?u32) noreturn {

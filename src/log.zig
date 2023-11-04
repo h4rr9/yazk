@@ -1,5 +1,5 @@
 const std = @import("std");
-const console = @import("console.zig");
+const serial = @import("serial.zig");
 
 pub fn log(
     comptime message_level: std.log.Level,
@@ -9,5 +9,5 @@ pub fn log(
 ) void {
     const level_txt = comptime message_level.asText();
     const prefix2 = if (scope == .default) ": " else "(" ++ @tagName(scope) ++ "): ";
-    console.printf(level_txt ++ prefix2 ++ format ++ "\n", args);
+    serial.printf(level_txt ++ prefix2 ++ format ++ "\n", args);
 }

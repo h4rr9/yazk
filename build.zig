@@ -98,8 +98,10 @@ pub fn build(b: *std.Build) void {
         "qemu-system-x86_64",
         "-cdrom",
         iso_path,
-        "-debugcon",
+        "-serial",
         "stdio",
+        "-debugcon",
+        "file:debugcon.log",
         "-vga",
         "virtio",
         "-m",
@@ -112,6 +114,8 @@ pub fn build(b: *std.Build) void {
 
     const qemu_kernel_cmd_str = &[_][]const u8{
         "qemu-system-x86_64",
+        "-serial",
+        "stdio",
         "-kernel",
         kernel_path,
     };
