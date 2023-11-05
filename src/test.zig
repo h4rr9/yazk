@@ -1,3 +1,3 @@
 comptime {
-    _ = @import("ally.zig");
+    _ = @import("Ally.zig");
 }

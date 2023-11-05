@@ -116,6 +116,8 @@ pub fn build(b: *std.Build) void {
         "qemu-system-x86_64",
         "-serial",
         "stdio",
+        "-vga",
+        "std",
         "-kernel",
         kernel_path,
     };

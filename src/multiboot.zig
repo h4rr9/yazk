@@ -1,6 +1,8 @@
 pub const MULTIBOOT_MEMORY_AVAILABLE = 1;
 pub const MULTIBOOT_MEMORY_RESERVED = 2;
 
+pub const FrameBufferInfo = struct {};
+
 /// A Module
 pub const Module = packed struct {
     mod_start: u32,
@@ -53,6 +55,14 @@ pub const MultibootInfo = extern struct {
     vbe_interface_seg: u16,
     vbe_interface_off: u16,
     vbe_interface_len: u16,
+
+    framebuffer_addr: u64,
+    framebuffer_pitch: u32,
+    framebuffer_width: u32,
+    framebuffer_height: u32,
+    framebuffer_bpp: u8,
+    framebuffer_type: u8,
+    color_info: [6]u8,
 
     const Self = @This();
 

@@ -1,7 +1,7 @@
 /// yoinked from https://github.com/ZystemOS/pluto/blob/develop/src/kernel/panic.zig
 const std = @import("std");
 const builtin = std.builtin;
-const console = @import("console.zig");
+const Console = @import("Console.zig");
 const multiboot = @import("multiboot.zig");
 const ArrayList = std.ArrayList;
 const Allocator = std.mem.Allocator;
@@ -94,7 +94,7 @@ var symbol_map: ?SymbolMap = null;
 ///
 fn logTraceAddress(addr: u32) void {
     const str = if (symbol_map) |syms| syms.search(addr) orelse "?????" else "(no symbols available)";
-    console.write("{x}: {s}", .{ addr, str });
+    std.log.err("{x}: {s}", .{ addr, str });
 }
 
 ///
@@ -264,10 +264,10 @@ var already_panicking: bool = false;
 pub fn panic(trace: ?*builtin.StackTrace, return_addr: ?u32, comptime format: []const u8, args: anytype) noreturn {
     @setCold(true);
     if (already_panicking) {
-        console.write("\npanicked during kernel panic", .{});
+        std.log.err("\npanicked during kernel panic", .{});
     } else {
         already_panicking = true;
-        console.write("Kernel panic: " ++ format, args);
+        std.log.err("Kernel panic: " ++ format, args);
         if (trace) |trc| {
             var last_addr: u64 = 0;
             for (trc.instruction_addresses) |ret_addr| {
