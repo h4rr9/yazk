@@ -92,7 +92,6 @@ pub fn drawCircle(screen: *const Screen, x: u32, y: u32, r: u32, c: Color) void 
     const y_end = @min(y + r, screen.height - 1);
 
     var x_delta: u32 = x_start;
-    std.log.info("xs: {d}, xe: {d}, ys: {d}, ye: {d}", .{ x_start, x_end, y_start, y_end });
 
     while (x_delta <= x_end) : (x_delta += 1) {
         var y_delta: u32 = y_start;

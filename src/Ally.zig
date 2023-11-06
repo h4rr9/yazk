@@ -1,6 +1,6 @@
 const std = @import("std");
 const multiboot = @import("multiboot.zig");
-const layout = @import("layout.zig");
+const Kernel = @import("Kernel.zig");
 
 const FreeSegment = packed struct {
     size: u32,
@@ -42,17 +42,17 @@ const Ally = @This();
 
 pub fn init(info: *const multiboot.MultibootInfo) Ally {
     const block = for (info.getMmapAddrs()) |mmap| {
-        if (mmap.addr == @intFromPtr(&layout.KERNEL_START))
+        if (mmap.addr == @intFromPtr(&Kernel.KERNEL_START))
             if (mmap.type == multiboot.MULTIBOOT_MEMORY_AVAILABLE)
                 break mmap;
     } else @panic("failed to find big block of ram.");
-    const kernel_end: u32 = @intFromPtr(&layout.KERNEL_END);
-    const kernel_start: u32 = @intFromPtr(&layout.KERNEL_START);
+    const kernel_end: u32 = @intFromPtr(&Kernel.KERNEL_END);
+    const kernel_start: u32 = @intFromPtr(&Kernel.KERNEL_START);
     const reserved_memory_length: u32 = kernel_end - kernel_start;
 
     const segment_size = block.len - reserved_memory_length - @sizeOf(FreeSegment);
 
-    const segment: *FreeSegment = @ptrCast(@alignCast(&layout.KERNEL_END));
+    const segment: *FreeSegment = @ptrCast(@alignCast(&Kernel.KERNEL_END));
     segment.* = .{ .size = segment_size, .next_segment = null };
 
     return .{ .first_free = segment };
