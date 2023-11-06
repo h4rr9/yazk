@@ -1,4 +1,4 @@
-# Zos
+# Yet another zig kernel.
 
 
 ``` sh
