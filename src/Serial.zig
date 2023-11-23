@@ -35,9 +35,9 @@ pub fn initialize(port_manager: *PortManager) !Serial {
     var interrupt_id_fifo_control = try port_manager.requestPort(BASE_ADDR + 2) orelse return SerialError.InterruptIdReserved;
     var line_control = try port_manager.requestPort(BASE_ADDR + 3) orelse return SerialError.LineControlReserved;
     var model_control = try port_manager.requestPort(BASE_ADDR + 4) orelse return SerialError.ModemControlReserved;
-    var line_status = try port_manager.requestPort(BASE_ADDR + 5) orelse return SerialError.LineStatusReserved;
-    var model_status = try port_manager.requestPort(BASE_ADDR + 6) orelse return SerialError.ModemStatusReserved;
-    var scratch = try port_manager.requestPort(BASE_ADDR + 7) orelse return SerialError.ScratchReserved;
+    const line_status = try port_manager.requestPort(BASE_ADDR + 5) orelse return SerialError.LineStatusReserved;
+    const model_status = try port_manager.requestPort(BASE_ADDR + 6) orelse return SerialError.ModemStatusReserved;
+    const scratch = try port_manager.requestPort(BASE_ADDR + 7) orelse return SerialError.ScratchReserved;
 
     enable_interrupt.writeb(0x00); // Disable all interrupts
     line_control.writeb(0x80); // Enable DLAB (set baud rate divisor)

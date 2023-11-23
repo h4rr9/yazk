@@ -53,15 +53,13 @@ pub fn init(multiboot_magic: u32, info: *const multiboot.MultibootInfo) !Kernel 
     std.log.info("initializing panic handler and debug symbols", .{});
     try debug.initSymbols(info.getModules(), fixed_buffer_ally);
 
-    var kernel: Kernel = .{
+    return .{
         .port_manager = port_manager,
         .ally = Ally.init(info),
         .screen = try Screen.initialize(info),
         .info = info,
         .console = Console.initialize(),
     };
-
-    return kernel;
 }
 
 pub fn run(kernel: *Kernel) !void {
@@ -79,7 +77,7 @@ pub fn run(kernel: *Kernel) !void {
 
     const testStruct = struct { u32, u32, u32, u128 };
 
-    var ts = try kernel_allocator.create(testStruct);
+    const ts = try kernel_allocator.create(testStruct);
     defer kernel_allocator.destroy(ts);
 
     ts.* = .{ 2, 2, 2, 2 };

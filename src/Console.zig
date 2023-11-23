@@ -39,7 +39,7 @@ fn vgaEntryColor(fg: ConsoleColors, bg: ConsoleColors) u8 {
 }
 
 fn vgaEntry(console: *Console, uc: u8) u16 {
-    var c: u16 = console.color;
+    const c: u16 = console.color;
     return uc | (c << 8);
 }
 

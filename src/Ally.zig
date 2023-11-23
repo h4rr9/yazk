@@ -284,7 +284,7 @@ test "Nested Vectors" {
     defer talloc.free(chunk);
 
     var kally = setupAlloc(@ptrCast(&chunk[0]), chunk.len);
-    var kalloc = kally.allocator();
+    const kalloc = kally.allocator();
 
     const initial_state = allocState(&kally);
     {
